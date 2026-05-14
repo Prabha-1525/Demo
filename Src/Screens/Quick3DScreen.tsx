@@ -1,0 +1,1085 @@
+/* eslint-disable react-native/no-inline-styles */
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  FlatList,
+  Platform,
+} from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  cancel,
+  CustomerServiceIcon,
+  lefArrow,
+  sameClock,
+} from "../../assets/assets";
+import { useDispatch, useSelector } from "react-redux";
+import HowToPlayModal from "../Components/HowToPlayModal";
+import GameFooter from "../Components/GameFooter";
+import RBSheet from "react-native-raw-bottom-sheet";
+import GameHeader from "../Components/GameHeader";
+import AntDesign from "react-native-vector-icons/AntDesign";
+import { RootState } from "../Redux/store";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  setDoubleDigitA1,
+  setDoubleDigitA2,
+  setDoubleDigitB1,
+  setDoubleDigitB2,
+  setDoubleDigitC1,
+  setDoubleDigitC2,
+  setSingleACount,
+  setSingleBCount,
+  setSingleCCount,
+  setSingleDigitA,
+  setSingleDigitB,
+  setSingleDigitC,
+  setDoubleABCount,
+  setDoubleACCount,
+  setDoubleBCCount,
+  setThreeDigitA,
+  setThreeDigitB,
+  setThreeDigitC,
+  setThreeDigitCount,
+  getMyOrders,
+} from "../Redux/Slice/threeDigitSlice";
+import {
+  gameRules,
+  setInsufficientBalanceModalVisible,
+  setPaymentSuccessModalVisible,
+  setTableCurrentPage,
+} from "../Redux/Slice/commonSlice";
+import DigitComponent from "../Components/DigitComponent";
+import { LinearGradient } from "expo-linear-gradient";
+import { COLORS } from "../Constants/Theme";
+import { useContainerScale } from "../hooks/useContainerScale";
+import { fetchQuick3DGamesData } from "../Redux/Slice/Quick3DSlice";
+import { formatToDecimal, formatToTime } from "../Utils/Common";
+import { getWalletBalance } from "../Redux/Slice/signInSlice";
+import { payNow } from "../Redux/Slice/HomeSlice";
+import { unwrapResult } from "@reduxjs/toolkit";
+import PaymentSuccessModal from "../Components/Modal/PaymentSuccessModal";
+import InsufficientBalanceModal from "../Components/Modal/InsufficientBalanceModal";
+import { getQuick3DResultByGroupId } from "../Redux/Slice/resultSlice";
+import NewAppHeader from "../Components/NewAppHeader";
+import ResultTable from "../Components/ResultTable";
+import { Image } from 'expo-image';
+
+const Quick3DScreen = ({ navigation, route }: any) => {
+  const { Scale } = useContainerScale();
+  const styles = createStyles(Scale);
+  const gameData = route.params.gameData;
+  console.log("gameData==>", gameData);
+
+  const dispatch = useDispatch();
+  const refRBSheet: any = useRef();
+
+  const [selectedOption, setSelectedOption] = useState("1 Mins");
+  const [islast30sec, setLast30sec] = useState(false);
+  const [numbers, setNumbers] = useState([]);
+  const [cartValues, setCartValues] = useState([]);
+  const [last30SecStates, setLast30SecStates] = useState<{
+    [key: string]: boolean;
+  }>({});
+
+  const { threeDigitA, threeDigitB, threeDigitC, threeDigitCount } =
+    useSelector((state: RootState) => state.threeDigit);
+
+  const { allResultData, individualGameResults } = useSelector(
+    (state: RootState) => state.resultSlice
+  );
+  const { quick3dGamesList, quick3dGamesGroupId, quick3dGameTypeId } = useSelector(
+    (state: RootState) => state.quick3DSlice
+  );
+  const { isLoggedIn, mainWalletBalance, userId, withdrawBalance } =
+    useSelector((state: RootState) => state.signInSlice);
+
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const totalBalance = mainWalletBalance + withdrawBalance;
+
+  const {
+    paymentSuccessModalVisible,
+    InsufficientBalanceModalVisible,
+    tableCurrentPage,
+  } = useSelector((state: RootState) => state.commonSlice);
+
+  const transformedResultData =
+    individualGameResults?.results?.map((item: any) => ({
+      ...item,
+      balls: item.winningNumber.split(""),
+    })) || [];
+
+  const totalPages = individualGameResults?.totalPages || 0;
+
+  const handleChildStateChange = (updatedValue: any) => {
+    setCartValues(updatedValue);
+  };
+
+  useEffect(() => {
+    if (gameData.name === "1minGame") {
+      setSelectedOption("1 Mins");
+      dispatch(
+        fetchQuick3DGamesData({
+          quickythree: "Q3D-1M",
+        })
+      );
+      dispatch(setTableCurrentPage(1));
+    } else if (gameData.name === "3minGame") {
+      setSelectedOption("3 Mins");
+      dispatch(
+        fetchQuick3DGamesData({
+          quickythree: "Q3D-3M",
+        })
+      );
+      dispatch(setTableCurrentPage(1));
+    } else if (gameData.name === "5minGame") {
+      setSelectedOption("5 Mins");
+      dispatch(
+        fetchQuick3DGamesData({
+          quickythree: "Q3D-5M",
+        })
+      );
+      dispatch(setTableCurrentPage(1));
+    }
+  }, [gameData]);
+
+  useEffect(() => {
+    dispatch(
+      getMyOrders({
+        userId: userId,
+        gametypeid: quick3dGameTypeId,
+      })
+    );
+    dispatch(
+      getQuick3DResultByGroupId({
+        GroupId: quick3dGamesGroupId,
+        page: tableCurrentPage,
+        pageSize: 10,
+      })
+    );
+  }, [userId, quick3dGamesGroupId, tableCurrentPage]);
+  // useEffect(() => {
+  //   dispatch(gameRules({ gameTypeId: quick3dGamesGroupId }));
+  // }, [dispatch, quick3dGamesGroupId]);
+
+  // Handle scroll to show/hide sticky header
+  const handleScroll = (event: any) => {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const threshold = 200; // Show sticky header after scrolling 200px (halfway point)
+
+    if (scrollY > threshold && !showStickyHeader) {
+      setShowStickyHeader(true);
+    } else if (scrollY <= threshold && showStickyHeader) {
+      setShowStickyHeader(false);
+    }
+  };
+
+  const transformApiResponse = (response: any) => {
+    if (!response || Object.keys(response).length === 0) {
+      return {
+        lastGameWiiningId: "",
+        nextGameId: 0,
+        lastGameWinningA: "",
+        lastGameWinningB: "",
+        lastGameWinningC: "",
+        singleDigitPrice: 0,
+        doubleDigitPrice: 0,
+        threeDigitPrice: 0,
+        singleDigitWinningPrice: 0,
+        doubleDigitWinningPrice: 0,
+        threeDigitWinningPrice: 0,
+        groupId: 0,
+        singleDigitGameId: 0,
+        doubleDigitGameId: 0,
+        threeDigitGameId: 0,
+        gameName: "",
+        targetDateProp: "",
+      };
+    }
+    const key = Object.keys(response)[0]; // "23:59:59"
+    const games = response[key];
+
+    const single = games?.find((g: any) => g.sectiontype == "Single");
+    const double = games?.find((g: any) => g.sectiontype == "Double");
+    const triple = games?.find((g: any) => g.sectiontype == "Triple");
+    const lastWinningNumber = single?.lastResult?.winningNumber || "";
+    const [a = "", b = "", c = ""] = lastWinningNumber.split("");
+
+    return {
+      lastGameWiiningId: "Last Game Winning Digits",
+      nextGameId: formatToTime(triple?.nextresulttime) || 0,
+      lastGameWinningA: a,
+      lastGameWinningB: b,
+      lastGameWinningC: c,
+
+      // Prices
+      singleDigitPrice: Number(single?.ticketprize) || 0,
+      doubleDigitPrice: Number(double?.ticketprize) || 0,
+      threeDigitPrice: Number(triple?.ticketprize) || 0,
+
+      // Winning amounts
+      singleDigitWinningPrice: Number(single?.prizeamount) || 0,
+      doubleDigitWinningPrice: Number(double?.prizeamount) || 0,
+      threeDigitWinningPrice: Number(triple?.prizeamount) || 0,
+
+      // IDs
+      groupId: triple?.groupId || 0,
+      singleDigitGameId: single?.id || 0,
+      doubleDigitGameId: double?.id || 0,
+      threeDigitGameId: triple?.id || 0,
+
+      // Timer
+      targetDateProp: triple?.nextresulttime || null,
+
+      // Raw data if needed
+      tableData: games,
+      gameName: "Quick 3D",
+    };
+  };
+
+  const filterNumericInput = (value: string) => {
+    return value.replace(/[^0-9]/g, "");
+  };
+  const onChangeSingleDigitA = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setSingleDigitA(filteredValue));
+  };
+  const onChangeSingleDigitB = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setSingleDigitB(filteredValue));
+  };
+  const onChangeSingleDigitC = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setSingleDigitC(filteredValue));
+  };
+  const doubleDigitA1OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitA1(filteredValue));
+  };
+  const doubleDigitA2OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitA2(filteredValue));
+  };
+  const doubleDigitB1OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitB1(filteredValue));
+  };
+  const doubleDigitB2OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitB2(filteredValue));
+  };
+  const doubleDigitC1OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitC1(filteredValue));
+  };
+  const doubleDigitC2OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitC2(filteredValue));
+  };
+  const onChangeThreeDigitA = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setThreeDigitA(filteredValue));
+  };
+  const onChangeThreeDigitB = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setThreeDigitB(filteredValue));
+  };
+  const onChangeThreeDigitC = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setThreeDigitC(filteredValue));
+  };
+
+  const goBack = () => {
+    navigation.goBack();
+  };
+
+  const handleAdd = (
+    label: string,
+    value: string,
+    count: number,
+    selectedOption: string,
+    price: number,
+    groupId: number,
+    gameId: number,
+    targetDateProp: any
+  ) => {
+    if (value === "") {
+      Alert.alert("Error", "Please enter a value");
+      return;
+    }
+
+    setNumbers((prevNumbers) => [
+      ...prevNumbers,
+      {
+        id: prevNumbers.length + 1,
+        label,
+        value,
+        count,
+        type: selectedOption,
+        price,
+        groupId,
+        gameId,
+        bettingTime: targetDateProp,
+      },
+    ]);
+
+    // Clear input after adding data
+    clearInputs(label);
+  };
+
+  const clearInputs = (label: string) => {
+    if (label === "A") {
+      onChangeSingleDigitA(""), dispatch(setSingleACount(3));
+    } else if (label === "B") {
+      onChangeSingleDigitB(""), dispatch(setSingleBCount(3));
+    } else if (label === "C") {
+      onChangeSingleDigitC(""), dispatch(setSingleCCount(3));
+    } else if (label === "AB") {
+      doubleDigitA1OnChange(""), dispatch(setDoubleABCount(3));
+      doubleDigitB1OnChange("");
+    } else if (label === "AC") {
+      doubleDigitA2OnChange(""), dispatch(setDoubleACCount(3));
+      doubleDigitC1OnChange("");
+    } else if (label === "BC") {
+      doubleDigitB2OnChange(""), dispatch(setDoubleBCCount(3));
+      doubleDigitC2OnChange("");
+    } else if (label === "ABC") {
+      onChangeThreeDigitA(""), dispatch(setThreeDigitCount(3));
+      onChangeThreeDigitB(""), onChangeThreeDigitC("");
+    }
+  };
+  const handleHeader = (value: any) => {
+    const isAdded = numbers.some((item: any) => item.type === value.name);
+
+    if (!isAdded && numbers.length > 0) {
+      Alert.alert(
+        "Confirmation Reminder",
+        `You have placed an order for the Text\n${selectedOption} time.\nAre you sure you want to remove your previous selections?`,
+        [
+          {
+            text: "Cancel",
+            onPress: () => console.log("Cancel Pressed"),
+            style: "cancel",
+          },
+          {
+            text: "Confirm",
+            onPress: () => {
+              setNumbers([]);
+              setSelectedOption(value.name);
+              resetState();
+              triggerAPI(value.name);
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+      return;
+    }
+
+    setSelectedOption(value.name);
+    triggerAPI(value.name);
+    resetState();
+  };
+
+  const triggerAPI = (selectedOption: string) => {
+    // dispatch(
+    //   getMyOrders({
+    //     userId: userId,
+    //     groupId: 2,
+    //   })
+    // );
+    console.log("checkSelectedOption==", selectedOption);
+
+    if (selectedOption == "1 Mins") {
+      dispatch(
+        fetchQuick3DGamesData({
+          quickythree: "Q3D-1M",
+        })
+      );
+    } else if (selectedOption == "3 Mins") {
+      dispatch(
+        fetchQuick3DGamesData({
+          quickythree: "Q3D-3M",
+        })
+      );
+    } else if (selectedOption == "5 Mins") {
+      dispatch(
+        fetchQuick3DGamesData({
+          quickythree: "Q3D-5M",
+        })
+      );
+    }
+    dispatch(
+getMyOrders({
+        userId: userId,
+        gametypeid: quick3dGameTypeId,
+      })
+    );
+    dispatch(
+      getQuick3DResultByGroupId({
+        GroupId: quick3dGamesGroupId,
+        page: tableCurrentPage,
+        pageSize: 10,
+      })
+    );
+    setLast30sec(false);
+  };
+
+  const removeNumber = (id: number) => {
+    setNumbers((prevNumbers) => prevNumbers.filter((item) => item.id !== id));
+  };
+
+  const sum = numbers.reduce(
+    (acc: any, item: any) => acc + item.count * item.price,
+    0
+  );
+  const sum1 = numbers.reduce((acc: any, item: any) => acc + item.count, 0);
+
+  const handleAddPermutations = (
+    label: string,
+    values: string[],
+    count: number,
+    selectedOption: string,
+    price: number,
+    groupId: number,
+    gameId: number,
+    bettingTime: any
+  ) => {
+    if (values.length === 0) {
+      Alert.alert("Error", "Please enter a value");
+      return;
+    }
+
+    // Generate permutations
+    const results: Set<string> = new Set();
+
+    const permute = (arr: string[], m: string[] = []) => {
+      if (arr.length === 0) {
+        results.add(m.join(""));
+      } else {
+        for (let i = 0; i < arr.length; i++) {
+          const current = [...arr];
+          const next = current.splice(i, 1);
+          permute(current, [...m, ...next]);
+        }
+      }
+    };
+
+    permute(values);
+
+    // Add generated values with ID to state
+    setNumbers((prevNumbers) => [
+      ...prevNumbers,
+      ...Array.from(results).map((value, index) => ({
+        id: prevNumbers.length + index + 1, // Unique ID based on array length
+        label,
+        value,
+        count,
+        type: selectedOption,
+        price,
+        groupId,
+        gameId,
+        bettingTime,
+      })),
+    ]);
+  };
+
+  const resetState = () => {
+    setNumbers([]);
+    setCartValues([]);
+    // setSelectedOption(null);
+    setSingleACount(3);
+    setSingleBCount(3);
+    setSingleCCount(3);
+    setDoubleABCount(3);
+    setDoubleACCount(3);
+    setDoubleBCCount(3);
+    setThreeDigitCount(3);
+    dispatch(setSingleDigitA(""));
+    dispatch(setSingleDigitB(""));
+    dispatch(setSingleDigitC(""));
+    dispatch(setDoubleDigitA1(""));
+    dispatch(setDoubleDigitA2(""));
+    dispatch(setDoubleDigitB1(""));
+    dispatch(setDoubleDigitB2(""));
+    dispatch(setDoubleDigitC1(""));
+    dispatch(setDoubleDigitC2(""));
+    dispatch(setThreeDigitA(""));
+    dispatch(setThreeDigitB(""));
+    dispatch(setThreeDigitC(""));
+  };
+  useEffect(() => {
+    resetState();
+  }, []);
+
+  // Handle button press
+  const handleGenerate = (
+    threeDigitPrice: number,
+    groupId: number,
+    threeDigitGameId: number,
+    targetDateProp: string
+  ) => {
+    if (threeDigitA !== "" && threeDigitB !== "" && threeDigitC !== "") {
+      const values = [threeDigitA, threeDigitB, threeDigitC];
+      handleAddPermutations(
+        "ABC",
+        values,
+        threeDigitCount,
+        selectedOption,
+        threeDigitPrice,
+        groupId,
+        threeDigitGameId,
+        targetDateProp
+      );
+      clearInputs("ABC");
+    }
+  };
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    if (paymentSuccessModalVisible) {
+      timer = setTimeout(() => {
+        dispatch(setPaymentSuccessModalVisible(false));
+      }, 3000);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [paymentSuccessModalVisible, dispatch]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    if (InsufficientBalanceModalVisible) {
+      timer = setTimeout(() => {
+        dispatch(setInsufficientBalanceModalVisible(false));
+      }, 2000);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [InsufficientBalanceModalVisible, dispatch]);
+
+  const handlePayNow = async () => {
+    if (isLoggedIn) {
+      try {
+        const apiData = {
+          bets: numbers.map((item) => ({
+            gameId: item.gameId,
+            groupId: item.groupId,
+            betType: item.label,
+            selectedNumber: String(item.value),
+            betCount: item.count,
+            amount: item.price,
+            gameTime: item.bettingTime,
+          })),
+        };
+        const resultAction = await dispatch(payNow(apiData));
+        const data = unwrapResult(resultAction);
+        if (data.success === true) {
+          console.log("checking");
+
+          resetState();
+          dispatch(getWalletBalance());
+          dispatch(
+           getMyOrders({
+        userId: userId,
+        gametypeid: quick3dGameTypeId,
+      })
+          );
+        }
+      } catch (error: any) {
+        console.log("handlePayNowError", error);
+      }
+    } else {
+      navigation.navigate("SignInScreen");
+    }
+  };
+
+  const OPTIONS = [
+    { id: 1, name: "1 Mins", isSelected: true },
+    { id: 2, name: "3 Mins", isSelected: false },
+    { id: 3, name: "5 Mins", isSelected: false },
+  ];
+
+  const renderHeader = ({ item }: any) => {
+    const isSelected = selectedOption === item.name;
+    return (
+      // <LinearGradient
+      //   colors={[
+      //     isSelected ? COLORS.linearOne : COLORS.linearTwo,
+      //     isSelected ? COLORS.tabActiveBg : COLORS.tabInactiveBg,
+      //   ]}
+      //   start={{ x: 0, y: 0 }}
+      //   end={{ x: 1, y: 0 }}
+      //   style={[
+      //     styles.headerBtn,
+      //     !isSelected && { borderColor: COLORS.tabInactiveBorder },
+      //   ]}
+      // >
+      <LinearGradient
+      colors={[
+        selectedOption === item.name
+          ? COLORS.linearOne
+          : COLORS.gameDetailColor, // fallback color
+        selectedOption === item.name
+          ? COLORS.linearTwo
+          : COLORS.gameDetailColor,
+      ]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={[
+        styles.headerBtn,
+        { backgroundColor: selectedOption === item.name ? "pink" : "white" },
+      ]}
+    >
+        <TouchableOpacity
+          style={{ justifyContent: "center", alignItems: "center" }}
+          onPress={() => handleHeader(item)}
+        >
+          <Image
+            source={sameClock}
+            contentFit="contain"
+            style={styles.headerImg}
+          />
+          <Text
+            style={[
+              styles.headerBtnText,
+              {
+                marginLeft: 5,
+                marginTop: Scale(5),
+                color: isSelected ? COLORS.tabActiveText : COLORS.tabActiveText,
+              },
+            ]}
+          >
+            {item.name}
+          </Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  };
+
+  const renderContent = () => {
+    const transformedGameData = transformApiResponse(quick3dGamesList || {});
+    return (
+      <>
+        <DigitComponent
+          lastGameWiiningId={transformedGameData.lastGameWiiningId}
+          nextGameId={transformedGameData.nextGameId}
+          latGameWinningA={transformedGameData.lastGameWinningA}
+          lastGameWinningB={transformedGameData.lastGameWinningB}
+          lastGameWinningC={transformedGameData.lastGameWinningC}
+          singleDigitPrice={transformedGameData.singleDigitPrice}
+          singleDigitWinningPrice={transformedGameData.singleDigitWinningPrice}
+          handleAdd={handleAdd}
+          selectedOption={selectedOption}
+          doubleDigitPrice={transformedGameData.doubleDigitPrice}
+          doubleDigitWinningPrice={transformedGameData.doubleDigitWinningPrice}
+          tableData={transformedResultData}
+          handleGenerate={handleGenerate}
+          threeDigitWinningPrice={transformedGameData.threeDigitWinningPrice}
+          threeDigitPrice={transformedGameData.threeDigitPrice}
+          onStateChange={handleChildStateChange}
+          targetDateProp={transformedGameData.targetDateProp}
+          totalPage={totalPages}
+          onThirtySecondsRemaining={() => {
+            setLast30SecStates((prev) => ({
+              ...prev,
+              [transformedGameData.groupId]: true, 
+            }));
+          }}
+          onTimerComplete={() => {
+            setLast30SecStates((prev) => ({
+              ...prev,
+              [transformedGameData.groupId]: false,
+            }));
+            triggerAPI(selectedOption); 
+          }}
+          gameName={transformedGameData.gameName}
+          groupId={transformedGameData.groupId}
+          singleDigitGameId={transformedGameData.singleDigitGameId}
+          doubleDigitGameId={transformedGameData.doubleDigitGameId}
+          threeDigitGameId={transformedGameData.threeDigitGameId}
+        />
+
+        {/* <ResultTable
+          tableData={transformedResultData}
+          totalPage={totalPages}
+          showHeader={true}
+        /> */}
+      </>
+    );
+  };
+
+  return (
+    // <View style={styles.mainContainer}>
+    <LinearGradient
+    colors={[COLORS.white, COLORS.primary]}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 0 }}
+    style={styles.mainContainer}>
+      {showStickyHeader && (
+        <NewAppHeader
+          leftIconPress={goBack}
+          rightIconPress={() => {}}
+          centerText={"Quick 3Digit Games"}
+          rightIcon={CustomerServiceIcon}
+        />
+      )}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingBottom: Scale(100),
+            paddingTop: showStickyHeader ? Scale(80) : 0,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="always"
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+      >
+        <GameHeader
+          HeaderText={"Quick 3Digit Games"}
+          leftonPress={goBack}
+          leftImage={lefArrow}
+          rightImage={lefArrow}
+          onPressWithdraw={() => {
+            navigation.navigate("Withdraw");
+          }}
+          onPressRecharge={() => {
+            navigation.navigate("WalletScreen");
+          }}
+          walletBalance={formatToDecimal(totalBalance)}
+          onPressRefresh={() => {
+            if (isLoggedIn) {
+              dispatch(getWalletBalance());
+            } else {
+              navigation.navigate("SignInScreen");
+            }
+          }}
+        />
+        <FlatList
+          data={OPTIONS}
+          keyExtractor={(item) => item.id.toString()}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.startView}
+          renderItem={renderHeader}
+        />
+
+        <View style={styles.subContainer}>
+          {/* Conditionally Render UI Based on Selection */}
+          <View style={styles.renderDataView}>{renderContent()}</View>
+          <View>
+            <HowToPlayModal
+              gameTitle={`Quick 3D ${selectedOption}`}
+              introText={`Quick 3D ${selectedOption} is an exhilarating lottery game. The lottery game mode that opens every ${selectedOption} has increased fun and excitement, and more frequent bonus opportunities.`}
+              timeText={`Time: 24-hour drawing, once every ${selectedOption}`}
+            />
+          </View>
+        </View>
+      </ScrollView>
+      <RBSheet
+        ref={refRBSheet}
+        height={Platform.OS === "ios" ? Scale(400) : Scale(350)}
+        draggable={true}
+        closeOnPressMask={true}
+        customStyles={{
+          wrapper: { backgroundColor: "transparent" },
+          container: {
+            borderTopLeftRadius: Scale(20),
+            borderTopRightRadius: Scale(20),
+            paddingHorizontal: Scale(10),
+            marginBottom: Scale(80),
+            backgroundColor: COLORS.cardBg,
+          },
+          draggableIcon: {
+            width: Scale(75),
+            height: Scale(5),
+            backgroundColor: COLORS.cardBorder,
+            borderRadius: Scale(2.5),
+            marginVertical: Scale(10),
+          },
+        }}
+      >
+        <View style={styles.myNumbersSheetContent}>
+          <View style={styles.myNumbersSheetHeader}>
+            <Text style={styles.myNumbersSheetTitle}>My Numbers</Text>
+            <TouchableOpacity onPress={() => setNumbers([])}>
+              <AntDesign
+                name="delete"
+                size={Scale(18)}
+                color={COLORS.primaryTextColor}
+                style={{ marginRight: Scale(10) }}
+              />
+            </TouchableOpacity>
+          </View>
+          {islast30sec ? (
+            <View>
+              <Text style={styles.myNumbersSheetEmpty}>Empty</Text>
+            </View>
+          ) : (
+            <View style={styles.myNumbersSheetList}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Scale(10) }}>
+                {numbers.map((item) => (
+                  <View key={item.id} style={styles.myNumbersChip}>
+                    <Text style={styles.myNumbersChipText}>
+                      {item.label} = {item.value}
+                    </Text>
+                    <View style={styles.myNumbersChipCount}>
+                      <Text style={styles.myNumbersChipCountText}>x{item.count}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => removeNumber(item.id)}
+                      style={styles.myNumbersChipRemove}
+                    >
+                      <Image
+                        source={cancel}
+                        style={{ width: Scale(10), height: Scale(10) }}
+                        tintColor={COLORS.primaryTextColor}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      </RBSheet>
+      <SafeAreaView
+        style={{ position: "absolute", bottom: Scale(-30), left: 0, right: 0 }}
+      >
+        <View style={styles.footerWrapper}>
+          <GameFooter
+            openSheet={() => refRBSheet.current.open()}
+            totalAmount={sum}
+            totalCount={sum1}
+            isDisabled={sum1 === 0 || last30SecStates[quick3dGamesGroupId]}
+            handlePayNow={handlePayNow}
+          />
+        </View>
+        <PaymentSuccessModal
+          headerImage
+          isVisible={paymentSuccessModalVisible}
+          toggleModal={() => dispatch(setPaymentSuccessModalVisible(false))}
+          headerText="Paid successfully!"
+          bodyText="Your tickets have been successfully purchased. Please take note of the draw time and check the results
+            Three Digits promptly."
+        />
+        <InsufficientBalanceModal
+          isVisible={InsufficientBalanceModalVisible}
+          headerText="Insufficient Balance!"
+          bodyText="Please add funds to your wallet to continue"
+        />
+      </SafeAreaView>
+
+    </LinearGradient>
+  );
+};
+const createStyles = (Scale: any) =>
+  StyleSheet.create({
+    mainContainer: {
+      // backgroundColor: COLORS.gamesBackground,
+      flex: 1,
+      marginBottom: Scale(0),
+    },
+    scrollView: {
+      flex: 1,
+      // backgroundColor: COLORS.gamesBackground,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    footerWrapper: {
+      // backgroundColor: COLORS.headerBackground,
+      height: Scale(80),
+      elevation: 10,
+    },
+    subContainer: {
+      marginTop: Scale(10),
+      marginHorizontal: 10,
+    },
+    container: {
+      flex: 1,
+    },
+    card: {
+      marginTop: Scale(20),
+      backgroundColor: 'red',
+      width: "100%",
+      borderRadius: 10,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 3,
+    },
+    cancelImage: {
+      height: Scale(24),
+      width: Scale(24),
+      marginTop: Scale(10),
+    },
+    startView: {
+      justifyContent: "center",
+      flex: 1,
+    },
+    renderDataView: {
+      padding: 10,
+      // backgroundColor: COLORS.gamesBackground,
+      flex: 1,
+      borderRadius: 10,
+    },
+    gameDetailView: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingHorizontal: 10,
+      marginTop: 10,
+      backgroundColor: COLORS.sectionHeaderBg,
+      overflow: "hidden",
+    },
+    showCountContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: COLORS.listRowBg,
+      borderRadius: 30,
+      paddingHorizontal: 5,
+      height: 40,
+      marginLeft: 30,
+    },
+    button: {
+      backgroundColor: COLORS.tabInactiveBg,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    symbol: {
+      fontSize: 15,
+      color: COLORS.primaryTextColor,
+    },
+    input: {
+      width: 50,
+      fontSize: 18,
+      fontWeight: "bold",
+      color: COLORS.primaryTextColor,
+      textAlign: "center",
+    },
+    buttonText: {
+      color: COLORS.white,
+      fontSize: 16,
+    },
+    valueText: {
+      marginTop: 20,
+      fontSize: 18,
+      fontWeight: "bold",
+      color: COLORS.primaryTextColor,
+    },
+    boxButton: {
+      backgroundColor: COLORS.tabActiveBg,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+    },
+    DigitTitleText: {
+      color: COLORS.primaryTextColor,
+      fontWeight: "bold",
+      fontSize: Scale(16),
+    },
+    DigitTitleText1: {
+      color: COLORS.primaryTextColor,
+      fontWeight: "bold",
+      fontSize: Scale(14),
+      top: 1,
+    },
+    headerBtn: {
+      alignItems: "center",
+      borderRadius: 10,
+      padding: 10,
+      justifyContent: "center",
+      marginHorizontal: 5,
+      height: Scale(100),
+      borderWidth: 0.1,
+      borderColor: COLORS.tabInactiveBorder,
+    },
+    headerBtnText: {
+      fontSize: Scale(14),
+      fontWeight: "bold",
+    },
+    headerImg: { width: Scale(30), height: Scale(30) },
+    myNumbersSheetContent: {
+      flex: 1,
+      marginHorizontal: 10,
+      marginVertical: 20,
+    },
+    myNumbersSheetHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    myNumbersSheetTitle: {
+      fontWeight: "bold",
+      fontSize: Scale(16),
+      color: COLORS.primaryTextColor,
+      marginHorizontal: Scale(10),
+    },
+    myNumbersSheetEmpty: {
+      fontSize: Scale(14),
+      color: COLORS.secondaryTextColor,
+    },
+    myNumbersSheetList: {
+      marginHorizontal: Scale(10),
+      marginTop: Scale(20),
+    },
+    myNumbersChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: COLORS.listRowBg,
+      borderRadius: Scale(20),
+      paddingHorizontal: Scale(15),
+      paddingVertical: Scale(8),
+      position: "relative",
+      borderWidth: 1,
+      borderColor: COLORS.gameTileBorder,
+    },
+    myNumbersChipText: {
+      fontSize: Scale(14),
+      fontWeight: "bold",
+      color: COLORS.primaryTextColor,
+    },
+    myNumbersChipCount: {
+      backgroundColor: COLORS.tabActiveBg,
+      borderRadius: Scale(5),
+      paddingHorizontal: Scale(5),
+      marginLeft: Scale(5),
+    },
+    myNumbersChipCountText: {
+      fontSize: Scale(12),
+      fontWeight: "bold",
+      color: COLORS.white,
+    },
+    myNumbersChipRemove: {
+      position: "absolute",
+      top: Scale(-5),
+      right: Scale(-5),
+      backgroundColor: COLORS.headerBackground,
+      width: Scale(18),
+      height: Scale(18),
+      borderRadius: Scale(9),
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: COLORS.cardBorder,
+    },
+  });
+export default Quick3DScreen;

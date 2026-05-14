@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Demo",
-    "slug": "Demo",
+    "name": "Annai Lottery",
+    "slug": "annai-lottery",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,17 +13,29 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ajay-gaming.Demo"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.ajay_gaming.Demo"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "scheme": "annai-lottery",
+    "extra": {
+      "eas": {
+        "projectId": "40bc88ac-9f46-4364-b391-35541389ad1d"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/40bc88ac-9f46-4364-b391-35541389ad1d"
     }
   }
 }

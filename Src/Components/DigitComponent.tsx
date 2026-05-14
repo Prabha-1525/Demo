@@ -1,0 +1,1178 @@
+import React, { use, useEffect, useRef, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, TextInput } from "react-native";
+import CommonBall from "./CommonBall";
+import SingleIntegerTextInput from "./SingleIntegerTextInput";
+import CountButtons from "./CountButtons";
+import CommonAddButton from "./CommonAddButton";
+import CommonQuickGuess from "./CommonQuickGuess";
+import ResultTable from "./ResultTable";
+import CountdownTimer from "./CountdownTimer";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../Redux/store";
+import { useContainerScale } from "../hooks/useContainerScale";
+import {
+  setDoubleDigitA1,
+  setDoubleDigitA2,
+  setDoubleDigitB1,
+  setDoubleDigitB2,
+  setDoubleDigitC1,
+  setDoubleDigitC2,
+  setSingleACount,
+  setSingleBCount,
+  setSingleCCount,
+  setSingleDigitA,
+  setSingleDigitB,
+  setSingleDigitC,
+  setDoubleABCount,
+  setDoubleACCount,
+  setDoubleBCCount,
+  setThreeDigitA,
+  setThreeDigitB,
+  setThreeDigitC,
+  setThreeDigitCount,
+} from "../Redux/Slice/threeDigitSlice";
+import {
+  gameRules,
+  handleShowAlert,
+  showHowToPlay,
+} from "../Redux/Slice/commonSlice";
+import Show30SecondsModal from "./Show30SecondsModal";
+import { COLORS } from "../Constants/Theme";
+import { LinearGradient } from "expo-linear-gradient";
+
+export interface IDigitProps {
+  handleAdd: (
+    label: any,
+    value: string,
+    count: number,
+    selectedOption: any,
+    price: number,
+    groupId: number,
+    gameId: number,
+    targetDateProp: any
+  ) => void;
+  selectedOption: any;
+
+  tableData: any[];
+  lastGameWiiningId: string;
+  nextGameId: string | number;
+  latGameWinningA: string;
+  lastGameWinningB: string;
+  lastGameWinningC: string;
+
+  singleDigitPrice: number;
+  singleDigitWinningPrice: number;
+
+  doubleDigitPrice: number;
+  doubleDigitWinningPrice: number;
+
+  threeDigitPrice: number;
+  threeDigitWinningPrice: number;
+  handleGenerate: (
+    threeDigitPrice: any,
+    groupId: number,
+    threeDigitGameId: number,
+    targetDateProp: any
+  ) => void;
+  onStateChange: any;
+  targetDateProp?: any;
+  onTimerComplete?: any;
+  onThirtySecondsRemaining?: any;
+  gameName: string;
+  groupId: number;
+  singleDigitGameId: number;
+  doubleDigitGameId: number;
+  threeDigitGameId: number;
+  totalPage: number;
+}
+
+const DigitComponent: React.FC<IDigitProps> = ({
+  handleAdd,
+  selectedOption,
+  tableData,
+  lastGameWiiningId,
+  nextGameId,
+  latGameWinningA,
+  lastGameWinningB,
+  lastGameWinningC,
+
+  singleDigitPrice,
+  singleDigitWinningPrice,
+  doubleDigitPrice,
+  doubleDigitWinningPrice,
+  threeDigitPrice,
+  handleGenerate,
+  threeDigitWinningPrice,
+  onStateChange,
+  targetDateProp,
+  onTimerComplete,
+  onThirtySecondsRemaining,
+  gameName,
+  groupId,
+  singleDigitGameId,
+  doubleDigitGameId,
+  threeDigitGameId,
+  totalPage,
+}) => {
+  const { Scale, verticalScale } = useContainerScale();
+  const styles = createStyles(Scale);
+  const [targetDate, setTargetDate] = useState("2025-07-03T18:35:27.123Z");
+
+  const [showAlert, setShowAlert] = useState(false);
+  const [numbers, setNumbers] = useState([]);
+  const [isVisible, setIsVisible] = useState(true);
+  const {
+    singleDigitA,
+    singleDigitB,
+    singleDigitC,
+    singleACount,
+    singleBCount,
+    singleCCount,
+    doubleDigitA1,
+    doubleDigitA2,
+    doubleDigitB1,
+    doubleDigitB2,
+    doubleDigitC1,
+    doubleDigitC2,
+    doubleABCount,
+    doubleACCount,
+    doubleBCCount,
+    threeDigitA,
+    threeDigitB,
+    threeDigitC,
+    threeDigitCount,
+  } = useSelector((state: RootState) => state.threeDigit);
+
+  const dispatch = useDispatch();
+  const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  const handleAutoFocus = (value: string, nextIndex?: number) => {
+    if (value.length !== 1 || nextIndex === undefined) return;
+    inputRefs.current[nextIndex]?.focus();
+  };
+
+  const getRandomNumber = () => Math.floor(Math.random() * 10);
+
+  useEffect(() => {
+    console.log("Received from DigitComponent:==>", onStateChange);
+    if (onStateChange) {
+      onStateChange(numbers);
+      console.log("Received from DigitComponent:==>", onStateChange);
+    }
+  }, [numbers]);
+
+  const generateRandomNumbers = () => {
+    dispatch(setSingleDigitA(getRandomNumber()));
+    dispatch(setSingleDigitB(getRandomNumber()));
+    dispatch(setSingleDigitC(getRandomNumber()));
+  };
+
+  const generateDoubleDigitRandomNumbers = () => {
+    dispatch(setDoubleDigitA1(getRandomNumber()));
+    dispatch(setDoubleDigitA2(getRandomNumber()));
+    dispatch(setDoubleDigitB1(getRandomNumber()));
+    dispatch(setDoubleDigitB2(getRandomNumber()));
+    dispatch(setDoubleDigitC1(getRandomNumber()));
+    dispatch(setDoubleDigitC2(getRandomNumber()));
+  };
+
+  const generateThreeDigitRandomNumbers = () => {
+    dispatch(setThreeDigitA(getRandomNumber()));
+    dispatch(setThreeDigitB(getRandomNumber()));
+    dispatch(setThreeDigitC(getRandomNumber()));
+  };
+
+  const filterNumericInput = (value: string) => {
+    return value.replace(/[^0-9]/g, "");
+  };
+
+  const doubleDigitA1OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitA1(filteredValue));
+    handleAutoFocus(filteredValue, 4);
+  };
+  const doubleDigitA2OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitA2(filteredValue));
+    handleAutoFocus(filteredValue, 6);
+  };
+  const doubleDigitB1OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitB1(filteredValue));
+    handleAutoFocus(filteredValue, 5);
+  };
+  const doubleDigitB2OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitB2(filteredValue));
+    handleAutoFocus(filteredValue, 8);
+  };
+  const doubleDigitC1OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitC1(filteredValue));
+    handleAutoFocus(filteredValue, 7);
+  };
+  const doubleDigitC2OnChange = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setDoubleDigitC2(filteredValue));
+    handleAutoFocus(filteredValue, 9);
+  };
+
+  const onChangeSingleDigitA = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setSingleDigitA(filteredValue));
+    handleAutoFocus(filteredValue, 1);
+  };
+  const onChangeSingleDigitB = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setSingleDigitB(filteredValue));
+    handleAutoFocus(filteredValue, 2);
+  };
+  const onChangeSingleDigitC = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setSingleDigitC(filteredValue));
+    handleAutoFocus(filteredValue, 3);
+  };
+
+  const onChangeThreeDigitA = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setThreeDigitA(filteredValue));
+    handleAutoFocus(filteredValue, 10);
+  };
+  const onChangeThreeDigitB = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setThreeDigitB(filteredValue));
+    handleAutoFocus(filteredValue, 11);
+  };
+  const onChangeThreeDigitC = (value: any) => {
+    const filteredValue = filterNumericInput(value);
+    dispatch(setThreeDigitC(filteredValue));
+  };
+
+  useEffect(() => {
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 2000);
+  }, [showAlert]);
+
+  useEffect(() => {
+    if (targetDateProp) {
+      setTargetDate(targetDateProp);
+    }
+  }, [targetDateProp]);
+
+    
+    
+
+
+
+  return (
+    <>
+      <View style={styles.container}>
+        <View style={styles.gameDetailView}>
+          <View
+            style={{
+              paddingHorizontal: Scale(10),
+              paddingVertical: Scale(20),
+              flexDirection: "column",
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "flex-start",
+            }}
+          >
+            <View style={{ flexDirection: "row" }}>
+              <Text style={styles.gameNameText}>{gameName}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  dispatch(showHowToPlay())
+                }}
+                style={styles.howtoplayBtn}
+              >
+                <Text style={styles.howtoPlayTxt}>How to Play</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.gameNameText, { flex: 1, flexWrap: "wrap" }]}>
+              {lastGameWiiningId}
+            </Text>
+
+            <View style={styles.ballsView}>
+              <CommonBall
+                backgroundColor="#DE3C3F"
+                innerText={latGameWinningA}
+                borderColor="#DE3C3F"
+              />
+              <CommonBall
+                backgroundColor="#EC8204"
+                innerText={lastGameWinningB}
+                borderColor="#EC8204"
+              />
+              <CommonBall
+                backgroundColor="#066FEA"
+                innerText={lastGameWinningC}
+                borderColor="#066FEA"
+              />
+            </View>
+          </View>
+
+          <View style={{ paddingHorizontal: 10, paddingVertical: 20 }}>
+            <Text style={styles.gameNameText}>Time Remaining</Text>
+            <CountdownTimer
+              targetDate={targetDate}
+              onThirtySecondsLeft={() => {
+                setShowAlert(true);
+                onThirtySecondsRemaining?.();
+              }}
+              onComplete={onTimerComplete}
+            />
+            <Text style={[styles.gameNameText, { marginTop: Scale(10) }]}>{nextGameId}</Text>
+          </View>
+        </View>
+
+        {/* SINGLE DIGIT BLOCK */}
+        <View style={styles.card}>
+          <View style={styles.gameHeader}>
+            <View>
+              <View style={{ flexDirection: "row" }}>
+                <Text style={styles.DigitTitleText}>Single Digit</Text>
+              </View>
+
+              <Text
+                style={[styles.DigitTitleText, { marginVertical: Scale(5) }]}
+              >
+                ₹{singleDigitPrice.toFixed(2)}
+              </Text>
+            </View>
+
+            <LinearGradient
+              colors={[COLORS.linearOne, COLORS.linearTwo]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                borderBottomLeftRadius: 10,
+                padding: 3,
+                height: 30,
+                bottom: 10,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={styles.DigitTitleText1}>
+                {" "}
+                Win{" "}
+                <Text style={{ fontSize: Scale(16) }}>
+                  ₹{singleDigitWinningPrice.toFixed(2)}
+                </Text>
+              </Text>
+            </LinearGradient>
+            <CommonQuickGuess
+              innerText={"Quick Guess"}
+              onPress={() => {
+                generateRandomNumbers();
+              }}
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#DE3C3F"
+                innerText="A"
+                borderColor={"#DE3C3F"}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[0] = el;
+                }}
+                isDisabled={false}
+                value={singleDigitA?.toString()}
+                placeholderText={"-"}
+                onChange={onChangeSingleDigitA}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+            {singleDigitA !== "" && (
+              <CountButtons
+                count={singleACount}
+                setCount={(value) => dispatch(setSingleACount(value))}
+                onHide={() => dispatch(setSingleDigitA(""))}
+                minValue={1}
+                maxValue={999}
+              />
+            )}
+            <CommonAddButton
+              innerText="ADD"
+              opacity={(singleDigitA && singleACount) !== "" ? 1 : 0.5}
+              isDisabled={(singleDigitA && singleACount) !== "" ? false : true}
+              onPress={() =>
+                handleAdd(
+                  "A",
+                  singleDigitA,
+                  singleACount,
+                  selectedOption,
+                  singleDigitPrice,
+                  groupId,
+                  singleDigitGameId,
+                  targetDateProp
+                )
+              }
+            />
+          </View>
+          <View style={[styles.inputContainer]}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#EC8204"
+                innerText="B"
+                borderColor={"#EC8204"}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[1] = el;
+                }}
+                isDisabled={false}
+                value={singleDigitB?.toString()}
+                placeholderText={"-"}
+                onChange={onChangeSingleDigitB}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+            {singleDigitB !== "" && (
+              <CountButtons
+                count={singleBCount}
+                setCount={(value) => dispatch(setSingleBCount(value))}
+                onHide={() => dispatch(setSingleDigitB(""))} // Hide only B
+                minValue={1}
+                maxValue={999}
+              />
+            )}
+            <CommonAddButton
+              innerText="ADD"
+              opacity={(singleDigitB && singleBCount) !== "" ? 1 : 0.5}
+              isDisabled={(singleDigitB && singleBCount) !== "" ? false : true}
+              onPress={() =>
+                handleAdd(
+                  "B",
+                  singleDigitB,
+                  singleBCount,
+                  selectedOption,
+                  singleDigitPrice,
+                  groupId,
+                  singleDigitGameId,
+                  targetDateProp
+                )
+              }
+            />
+          </View>
+          <View style={[styles.inputContainer]}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#066FEA"
+                innerText="C"
+                borderColor={"#066FEA"}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[2] = el;
+                }}
+                isDisabled={false}
+                value={singleDigitC?.toString()}
+                placeholderText={"-"}
+                onChange={onChangeSingleDigitC}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+            {singleDigitC !== "" && (
+              <CountButtons
+                count={singleCCount}
+                setCount={(value) => dispatch(setSingleCCount(value))}
+                onHide={() => dispatch(setSingleDigitC(""))} // Hide only C
+                minValue={1}
+                maxValue={999}
+              />
+            )}
+            <CommonAddButton
+              innerText="ADD"
+              opacity={(singleDigitC && singleCCount) !== "" ? 1 : 0.5}
+              isDisabled={(singleDigitC && singleCCount) !== "" ? false : true}
+              onPress={() =>
+                handleAdd(
+                  "C",
+                  singleDigitC,
+                  singleCCount,
+                  selectedOption,
+                  singleDigitPrice,
+                  groupId,
+                  singleDigitGameId,
+                  targetDateProp
+                )
+              }
+            />
+          </View>
+        </View>
+
+        {/* Double Digit Start */}
+        <View style={styles.card}>
+          <View style={styles.gameHeader}>
+            <View>
+              <View style={{ flexDirection: "row" }}>
+                <Text style={styles.DigitTitleText}>Double Digit</Text>
+              </View>
+
+              <Text
+                style={[styles.DigitTitleText, { marginVertical: Scale(5) }]}
+              >
+                ₹{doubleDigitPrice.toFixed(2)}
+              </Text>
+            </View>
+
+            <LinearGradient
+              colors={[COLORS.linearOne, COLORS.linearTwo]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                borderBottomLeftRadius: 10,
+                padding: 3,
+                height: 30,
+                bottom: 10,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={styles.DigitTitleText1}>
+                {" "}
+                Win{" "}
+                <Text style={{ fontSize: Scale(16) }}>
+                  ₹{doubleDigitWinningPrice.toFixed(2)}
+                </Text>
+              </Text>
+            </LinearGradient>
+            <CommonQuickGuess
+              innerText={"Quick Guess"}
+              onPress={() => {
+                generateDoubleDigitRandomNumbers();
+              }}
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#DE3C3F"
+                innerText="A"
+                borderColor={"#DE3C3F"}
+              />
+              <CommonBall
+                backgroundColor="#EC8204"
+                innerText="B"
+                borderColor={"#EC8204"}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[3] = el;
+                }}
+                isDisabled={false}
+                value={doubleDigitA1?.toString()}
+                placeholderText={"-"}
+                onChange={doubleDigitA1OnChange}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[4] = el;
+                }}
+                isDisabled={false}
+                value={doubleDigitB1?.toString()}
+                placeholderText={"-"}
+                onChange={doubleDigitB1OnChange}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+            {doubleDigitA1 !== "" && doubleDigitB1 !== "" && (
+              <View style={{ right: Scale(10) }}>
+                <CountButtons
+                  count={doubleABCount}
+                  setCount={(value) => dispatch(setDoubleABCount(value))}
+                  onHide={() => {
+                    dispatch(setDoubleDigitA1(""));
+                    dispatch(setDoubleDigitB1(""));
+                  }}
+                  minValue={1}
+                  maxValue={999}
+                />
+              </View>
+            )}
+            <CommonAddButton
+              innerText="ADD"
+              opacity={
+                doubleDigitA1 !== "" &&
+                doubleDigitB1 !== "" &&
+                doubleABCount !== ""
+                  ? 1
+                  : 0.5
+              }
+              isDisabled={
+                doubleDigitA1 !== "" &&
+                doubleDigitB1 !== "" &&
+                doubleABCount !== ""
+                  ? false
+                  : true
+              }
+              onPress={() =>
+                handleAdd(
+                  "AB",
+                  doubleDigitA1.toString() + doubleDigitB1.toString(),
+                  doubleABCount,
+                  selectedOption,
+                  doubleDigitPrice,
+                  groupId,
+                  doubleDigitGameId,
+                  targetDateProp
+                )
+              }
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#DE3C3F"
+                innerText="A"
+                borderColor={"#DE3C3F"}
+              />
+              <CommonBall
+                backgroundColor="#066FEA"
+                innerText="C"
+                borderColor={"#066FEA"}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[5] = el;
+                }}
+                isDisabled={false}
+                value={doubleDigitA2?.toString()}
+                placeholderText={"-"}
+                onChange={doubleDigitA2OnChange}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[6] = el;
+                }}
+                isDisabled={false}
+                value={doubleDigitC1?.toString()}
+                placeholderText={"-"}
+                onChange={doubleDigitC1OnChange}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+            {doubleDigitA2 !== "" && doubleDigitC1 !== "" && (
+              <View style={{ right: Scale(10) }}>
+                <CountButtons
+                  count={doubleACCount}
+                  setCount={(value) => dispatch(setDoubleACCount(value))}
+                  onHide={() => {
+                    dispatch(setDoubleDigitA2(""));
+                    dispatch(setDoubleDigitC1(""));
+                  }}
+                  minValue={1}
+                  maxValue={999}
+                />
+              </View>
+            )}
+            <CommonAddButton
+              innerText="ADD"
+              opacity={
+                doubleDigitA2 !== "" &&
+                doubleDigitC1 !== "" &&
+                doubleACCount !== ""
+                  ? 1
+                  : 0.5
+              }
+              isDisabled={
+                doubleDigitA2 !== "" &&
+                doubleDigitC1 !== "" &&
+                doubleACCount !== ""
+                  ? false
+                  : true
+              }
+              onPress={() =>
+                handleAdd(
+                  "AC",
+                  doubleDigitA2.toString() + doubleDigitC1.toString(),
+                  doubleACCount,
+                  selectedOption,
+                  doubleDigitPrice,
+                  groupId,
+                  doubleDigitGameId,
+                  targetDateProp
+                )
+              }
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#EC8204"
+                innerText="B"
+                borderColor={"#EC8204"}
+              />
+              <CommonBall
+                backgroundColor="#066FEA"
+                innerText="C"
+                borderColor={"#066FEA"}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[7] = el;
+                }}
+                isDisabled={false}
+                value={doubleDigitB2?.toString()}
+                placeholderText={"-"}
+                onChange={doubleDigitB2OnChange}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[8] = el;
+                }}
+                isDisabled={false}
+                value={doubleDigitC2?.toString()}
+                placeholderText={"-"}
+                onChange={doubleDigitC2OnChange}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+            {doubleDigitB2 !== "" && doubleDigitC2 !== "" && (
+              <View style={{ right: Scale(10) }}>
+                <CountButtons
+                  count={doubleBCCount}
+                  setCount={(value) => dispatch(setDoubleBCCount(value))}
+                  onHide={() => {
+                    dispatch(setDoubleDigitB2(""));
+                    dispatch(setDoubleDigitC2(""));
+                  }}
+                  minValue={1}
+                  maxValue={999}
+                />
+              </View>
+            )}
+            <CommonAddButton
+              innerText="ADD"
+              opacity={
+                doubleDigitB2 !== "" &&
+                doubleDigitC2 !== "" &&
+                doubleBCCount !== ""
+                  ? 1
+                  : 0.5
+              }
+              isDisabled={
+                doubleDigitB2 !== "" &&
+                doubleDigitC2 !== "" &&
+                doubleBCCount !== ""
+                  ? false
+                  : true
+              }
+              onPress={() =>
+                handleAdd(
+                  "BC",
+                  doubleDigitB2.toString() + doubleDigitC2.toString(),
+                  doubleBCCount,
+                  selectedOption,
+                  doubleDigitPrice,
+                  groupId,
+                  doubleDigitGameId,
+                  targetDateProp
+                )
+              }
+            />
+          </View>
+        </View>
+
+        {/* Three Digit Start */}
+
+        <View style={styles.card}>
+          <View style={styles.gameHeader}>
+            <View>
+              <View style={{ flexDirection: "row" }}>
+                <Text style={styles.DigitTitleText}>Three Digit</Text>
+              </View>
+
+              <Text
+                style={[styles.DigitTitleText, { marginVertical: Scale(5) }]}
+              >
+                ₹{threeDigitPrice.toFixed(2)}
+              </Text>
+            </View>
+
+            <LinearGradient
+              colors={[COLORS.linearOne, COLORS.linearTwo]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                borderBottomLeftRadius: 10,
+                padding: 3,
+                height: 30,
+                bottom: 10,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={styles.DigitTitleText1}>
+                {" "}
+                Win{" "}
+                <Text style={{ fontSize: Scale(16) }}>
+                  ₹{threeDigitWinningPrice.toFixed(2)}
+                </Text>
+              </Text>
+            </LinearGradient>
+            <CommonQuickGuess
+              innerText={"Quick Guess"}
+              onPress={() => {
+                generateThreeDigitRandomNumbers();
+              }}
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <View style={{ flexDirection: "row" }}>
+              <CommonBall
+                backgroundColor="#DE3C3F"
+                innerText="A"
+                borderColor={"#DE3C3F"}
+              />
+              <CommonBall
+                backgroundColor="#EC8204"
+                innerText="B"
+                borderColor={"#EC8204"}
+              />
+              <CommonBall
+                backgroundColor="#066FEA"
+                innerText="C"
+                borderColor={"#066FEA"}
+              />
+            </View>
+            <View style={{ flexDirection: "row" }}>
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[9] = el;
+                }}
+                isDisabled={false}
+                value={threeDigitA?.toString()}
+                placeholderText={"-"}
+                onChange={onChangeThreeDigitA}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[10] = el;
+                }}
+                isDisabled={false}
+                value={threeDigitB?.toString()}
+                placeholderText={"-"}
+                onChange={onChangeThreeDigitB}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+              <SingleIntegerTextInput
+                inputRef={(el) => {
+                  inputRefs.current[11] = el;
+                }}
+                isDisabled={false}
+                value={threeDigitC?.toString()}
+                placeholderText={"-"}
+                onChange={onChangeThreeDigitC}
+                onBlur={undefined}
+                keyboardType={"numeric"}
+                maxChar={1}
+              />
+            </View>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              marginVertical: Scale(20),
+              justifyContent: "space-between",
+              flex: 1,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                flex: 1,
+              }}
+            >
+              {threeDigitA !== "" &&
+                threeDigitB !== "" &&
+                threeDigitC !== "" && (
+                  <CountButtons
+                    count={threeDigitCount}
+                    setCount={(value) => dispatch(setThreeDigitCount(value))}
+                    onHide={() => {
+                      dispatch(setThreeDigitA(""));
+                      dispatch(setThreeDigitB(""));
+                      dispatch(setThreeDigitC(""));
+                    }}
+                    minValue={1}
+                    maxValue={999}
+                  />
+                )}
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-evenly",
+                flex: 0.7,
+              }}
+            >
+              <CommonAddButton
+                innerText={"BOX"}
+                opacity={
+                  threeDigitA !== "" &&
+                  threeDigitB !== "" &&
+                  threeDigitC !== "" &&
+                  threeDigitCount !== ""
+                    ? 1
+                    : 0.5
+                }
+                isDisabled={
+                  threeDigitA !== "" &&
+                  threeDigitB !== "" &&
+                  threeDigitC !== "" &&
+                  threeDigitCount !== ""
+                    ? false
+                    : true
+                }
+                onPress={() => {
+                  handleGenerate(
+                    threeDigitPrice,
+                    groupId,
+                    threeDigitGameId,
+                    targetDateProp
+                  );
+                }}
+              />
+              <CommonAddButton
+                innerText="ADD"
+                opacity={
+                  threeDigitA !== "" &&
+                  threeDigitB !== "" &&
+                  threeDigitC !== "" &&
+                  threeDigitCount !== ""
+                    ? 1
+                    : 0.5
+                }
+                isDisabled={
+                  threeDigitA !== "" &&
+                  threeDigitB !== "" &&
+                  threeDigitC !== "" &&
+                  threeDigitCount !== ""
+                    ? false
+                    : true
+                }
+                onPress={() =>
+                  handleAdd(
+                    "ABC",
+                    threeDigitA.toString() +
+                      threeDigitB.toString() +
+                      threeDigitC.toString(),
+                    threeDigitCount,
+                    selectedOption,
+                    threeDigitPrice,
+                    groupId,
+                    threeDigitGameId,
+                    targetDateProp
+                  )
+                }
+              />
+            </View>
+          </View>
+        </View>
+
+        <ResultTable
+          tableData={tableData}
+          totalPage={totalPage}
+          showHeader={true}
+        />
+      </View>
+      {showAlert && <Show30SecondsModal />}
+    </>
+  );
+};
+
+const createStyles = (Scale: any) =>
+  StyleSheet.create({
+    mainContainer: {
+      // backgroundColor: COLORS.gamesBackground,
+      flex: 1,
+      marginBottom: Scale(0),
+    },
+    subContainer: {
+      flex: 1,
+      marginHorizontal: 5,
+      marginTop: 20,
+    },
+    container: {
+      flex: 1,
+    },
+    card: {
+      marginTop: Scale(20),
+      backgroundColor: COLORS.primary,
+      width: "100%",
+      borderRadius: 10,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: COLORS.primary,
+    },
+    cancelImage: {
+      height: Scale(24),
+      width: Scale(24),
+      marginTop: Scale(10),
+    },
+    startView: {
+      marginHorizontal: 10,
+      justifyContent: "space-between",
+    },
+    renderDataView: {
+      padding: 10,
+      backgroundColor: COLORS.gamesBackground,
+      flex: 1,
+      borderRadius: 10,
+    },
+    gameDetailView: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 10,
+      backgroundColor: COLORS.primary,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 10,
+      borderWidth: 1,
+      borderColor: COLORS.primary,
+      borderRadius: 10,
+    },
+    showCountContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: COLORS.listRowBg,
+      borderRadius: 30,
+      paddingHorizontal: 5,
+      height: 40,
+      marginLeft: 30,
+      borderWidth: 1,
+      borderColor: COLORS.gameTileBorder,
+    },
+    button: {
+      backgroundColor: COLORS.tabInactiveBg,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    symbol: {
+      fontSize: 15,
+      color: COLORS.primaryTextColor,
+    },
+    input: {
+      width: 50,
+      fontSize: 18,
+      fontWeight: "bold",
+      color: COLORS.primaryTextColor,
+      textAlign: "center",
+    },
+    buttonText: {
+      color: COLORS.white,
+      fontSize: 16,
+    },
+    valueText: {
+      marginTop: 20,
+      fontSize: 18,
+      fontWeight: "bold",
+      color: COLORS.primaryTextColor,
+    },
+    boxButton: {
+      backgroundColor: COLORS.tabActiveBg,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 10,
+    },
+    DigitTitleText: {
+      color: COLORS.white,
+      fontWeight: "bold",
+      fontSize: Scale(18),
+    },
+    DigitTitleText1: {
+      color: COLORS.white,
+      fontWeight: "bold",
+      fontSize: Scale(12),
+      top: 1,
+    },
+    howtoplayBtn: {
+      backgroundColor: COLORS.primary,
+      marginHorizontal: 20,
+      borderRadius: 5,
+      borderWidth: 1,
+      borderColor: COLORS.white,
+      bottom: 5,
+      marginBottom: 5,
+    },
+    howtoPlayTxt: {
+      fontSize: 14,
+      fontWeight: "400",
+      paddingHorizontal: 5,
+      paddingVertical: 5,
+      color: COLORS.white,
+    },
+    gameNameText: {
+      fontSize: 14,
+      fontWeight: "bold",
+      color: COLORS.white,
+    },
+    ballsView: {
+      flexDirection: "row",
+      backgroundColor: COLORS.primary,
+      paddingVertical: 5,
+      borderRadius: 10,
+      marginTop: 10,
+      padding: 5,
+      borderWidth: 1,
+      borderColor: COLORS.white,
+    },
+    gameHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginVertical: Scale(20),
+      marginHorizontal: Scale(10),
+    },
+    inputContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginHorizontal: Scale(5),
+      marginVertical: Scale(5),
+    },
+  });
+
+export default DigitComponent;

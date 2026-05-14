@@ -1,0 +1,90 @@
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import Modal from 'react-native-modal';
+import { close } from '../../../assets/assets';
+import { useContainerScale } from '../../hooks/useContainerScale';
+import { COLORS } from '../../Constants/Theme';
+import { Image } from 'expo-image';
+
+type WalletInfoModalProps = {
+  isVisible: boolean;
+  toggleModal: () => void;
+  headerText: string;
+  bodyText: string;
+};
+
+const WalletInfoModal: React.FC<WalletInfoModalProps> = ({
+  isVisible,
+  toggleModal,
+  headerText,
+  bodyText,
+}) => {
+  const { Scale, verticalScale } = useContainerScale();
+  return (
+    <Modal 
+    isVisible={isVisible}
+    animationIn="flipInX"
+    animationOut="flipOutX"
+    backdropTransitionInTiming={0}
+    backdropTransitionOutTiming={0}
+    backdropOpacity={0.5}
+    style={{
+      alignItems: 'center',
+    }}
+    >
+      <View
+        style={{
+          backgroundColor: COLORS.white,
+          borderRadius: 10,
+          padding: 20,
+          marginBottom: 26,
+          width: '95%',
+          maxWidth: 380,
+          // alignItems: 'center',
+          // justifyContent: 'center',
+          // maxHeight: '80%',
+          marginHorizontal: Scale(10),
+        }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: Scale(20),
+          }}>
+          <Text
+            style={{
+              color: COLORS.primary,
+              fontWeight: 'bold',
+              fontSize: Scale(16),
+              textAlign: 'center',
+            }}>
+            {headerText}
+          </Text>
+          <TouchableOpacity onPress={toggleModal}>
+            <Image
+              source={close}
+              style={{
+                width: Scale(15),
+                height: Scale(15),
+                marginLeft: Scale(10),
+              }}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <Text
+          style={{
+            color: COLORS.primary,
+            fontWeight: '500',
+            fontSize: Scale(14),
+            lineHeight: Scale(22),
+          }}>
+          {bodyText}
+        </Text>
+      </View>
+    </Modal>
+  );
+};
+
+export default WalletInfoModal;

@@ -1,0 +1,40 @@
+import React, { useEffect } from "react";
+import { View, StyleSheet, StatusBar } from "react-native";
+import { newSplashScreen, updatedSplashscreen } from "../../assets/assets";
+import { Image } from "expo-image";
+
+const SplashScreen = ({ navigation }: { navigation: any }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigation.replace("DrawerNavigation");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <StatusBar backgroundColor="black" barStyle="dark-content" />
+      {/* <Image source={splashScreen} style={styles.logoImg}/> */}
+      <Image 
+      contentFit='fill'
+      // source={newSplashScreen} style={styles.logoImg} />
+      source={updatedSplashscreen} style={styles.logoImg} />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  logoImg: {
+    width: "100%",
+    height: "100%",
+  },
+});
+
+export default SplashScreen;
